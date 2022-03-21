@@ -1,4 +1,4 @@
-use binary_install::Download;
+use binary_install_async::Download;
 use std::fs::OpenOptions;
 
 #[test]

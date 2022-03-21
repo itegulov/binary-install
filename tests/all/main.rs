@@ -1,4 +1,4 @@
-extern crate binary_install;
+extern crate binary_install_async;
 extern crate flate2;
 extern crate tar;
 

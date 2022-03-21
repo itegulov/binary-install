@@ -9,17 +9,16 @@ extern crate hex;
 extern crate is_executable;
 extern crate siphasher;
 extern crate tar;
-extern crate zip;
+extern crate tokio;
 
 use failure::{Error, ResultExt};
 use siphasher::sip::SipHasher13;
 use std::collections::HashSet;
 use std::env;
 use std::ffi;
-use std::fs;
 use std::hash::{Hash, Hasher};
-use std::io;
 use std::path::{Path, PathBuf};
+use tokio::fs;
 
 /// Global cache for wasm-pack, currently containing binaries downloaded from
 /// urls like wasm-bindgen and such.
@@ -76,7 +75,7 @@ impl Cache {
     /// the destination, and `binaries` is a list of binaries expected to be at
     /// the url. If the URL's extraction doesn't contain all the binaries this
     /// function will return an error.
-    pub fn download(
+    pub async fn download(
         &self,
         install_permitted: bool,
         name: &str,
@@ -101,14 +100,11 @@ impl Cache {
         // Don't want to leave around corrupted data!
         let temp = self.destination.join(&format!(".{}", dirname));
         drop(fs::remove_dir_all(&temp));
-        fs::create_dir_all(&temp)?;
+        fs::create_dir_all(&temp).await?;
 
         if url.ends_with(".tar.gz") {
             self.extract_tarball(&data, &temp, binaries)
                 .with_context(|_| format!("failed to extract tarball from {}", url))?;
-        } else if url.ends_with(".zip") {
-            self.extract_zip(&data, &temp, binaries)
-                .with_context(|_| format!("failed to extract zip from {}", url))?;
         } else {
             // panic instead of runtime error as it's a static violation to
             // download a different kind of url, all urls should be encoded into
@@ -118,7 +114,7 @@ impl Cache {
 
         // Now that everything is ready move this over to our destination and
         // we're good to go.
-        fs::rename(&temp, &destination)?;
+        fs::rename(&temp, &destination).await?;
         Ok(Some(Download { root: destination }))
     }
 
@@ -152,56 +148,6 @@ impl Cache {
         }
 
         Ok(())
-    }
-
-    fn extract_zip(&self, zip: &[u8], dst: &Path, binaries: &[&str]) -> Result<(), Error> {
-        let mut binaries: HashSet<_> = binaries.into_iter().map(ffi::OsStr::new).collect();
-
-        let data = io::Cursor::new(zip);
-        let mut zip = zip::ZipArchive::new(data)?;
-
-        for i in 0..zip.len() {
-            let mut entry = zip.by_index(i).unwrap();
-            let entry_path = entry.sanitized_name();
-            match entry_path.file_stem() {
-                Some(f) if binaries.contains(f) => {
-                    binaries.remove(f);
-                    let mut dest = bin_open_options()
-                        .write(true)
-                        .create_new(true)
-                        .open(dst.join(entry_path.file_name().unwrap()))?;
-                    io::copy(&mut entry, &mut dest)?;
-                }
-                _ => continue,
-            };
-        }
-
-        if !binaries.is_empty() {
-            bail!(
-                "the zip was missing expected executables: {}",
-                binaries
-                    .into_iter()
-                    .map(|s| s.to_string_lossy())
-                    .collect::<Vec<_>>()
-                    .join(", "),
-            )
-        }
-
-        return Ok(());
-
-        #[cfg(unix)]
-        fn bin_open_options() -> fs::OpenOptions {
-            use std::os::unix::fs::OpenOptionsExt;
-
-            let mut opts = fs::OpenOptions::new();
-            opts.mode(0o755);
-            opts
-        }
-
-        #[cfg(not(unix))]
-        fn bin_open_options() -> fs::OpenOptions {
-            fs::OpenOptions::new()
-        }
     }
 }
 
@@ -320,8 +266,8 @@ mod tests {
         assert_eq!(cache.unwrap().destination, expected);
     }
 
-    #[test]
-    fn it_returns_destination_if_binary_already_exists() {
+    #[tokio::test]
+    async fn it_returns_destination_if_binary_already_exists() {
         use std::fs;
 
         let binary_name = "wasm-pack";
@@ -338,7 +284,7 @@ mod tests {
         // a cached binary already exists.
         fs::create_dir_all(full_path).unwrap();
 
-        let dl = cache.download(true, binary_name, &binaries, url);
+        let dl = cache.download(true, binary_name, &binaries, url).await;
 
         assert!(dl.is_ok());
         assert!(dl.unwrap().is_some())
