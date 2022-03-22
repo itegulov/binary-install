@@ -14,11 +14,12 @@ curl = "0.4.13"
 dirs = "1.0.4"
 failure = "0.1.2"
 flate2 = "1.0.2"
+futures = "0.3.21"
 hex = "0.3"
 is_executable = "0.1.2"
 siphasher = "0.2.3"
 tar = "0.4.16"
-tokio = { version = "1", features = ["full"] }
 
 [dev-dependencies]
 tempfile = "3.0.5"
+tokio = { version = "1", features = ["full"] }

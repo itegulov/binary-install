@@ -5,20 +5,22 @@ extern crate curl;
 extern crate failure;
 extern crate dirs;
 extern crate flate2;
+extern crate futures;
 extern crate hex;
 extern crate is_executable;
 extern crate siphasher;
 extern crate tar;
-extern crate tokio;
+
+mod async_fs;
 
 use failure::{Error, ResultExt};
+use futures::task::Spawn;
 use siphasher::sip::SipHasher13;
 use std::collections::HashSet;
 use std::env;
 use std::ffi;
 use std::hash::{Hash, Hasher};
 use std::path::{Path, PathBuf};
-use tokio::fs;
 
 /// Global cache for wasm-pack, currently containing binaries downloaded from
 /// urls like wasm-bindgen and such.
@@ -81,6 +83,7 @@ impl Cache {
         name: &str,
         binaries: &[&str],
         url: &str,
+        spawner: &impl Spawn,
     ) -> Result<Option<Download>, Error> {
         let dirname = hashed_dirname(url, name);
 
@@ -99,8 +102,8 @@ impl Cache {
         // Extract everything in a temporary directory in case we're ctrl-c'd.
         // Don't want to leave around corrupted data!
         let temp = self.destination.join(&format!(".{}", dirname));
-        drop(fs::remove_dir_all(&temp));
-        fs::create_dir_all(&temp).await?;
+        drop(async_fs::remove_dir_all(&temp, spawner).await);
+        async_fs::create_dir_all(&temp, spawner).await?;
 
         if url.ends_with(".tar.gz") {
             self.extract_tarball(&data, &temp, binaries)
@@ -114,7 +117,7 @@ impl Cache {
 
         // Now that everything is ready move this over to our destination and
         // we're good to go.
-        fs::rename(&temp, &destination).await?;
+        async_fs::rename(&temp, &destination, spawner).await?;
         Ok(Some(Download { root: destination }))
     }
 
@@ -264,29 +267,5 @@ mod tests {
 
         assert!(cache.is_ok());
         assert_eq!(cache.unwrap().destination, expected);
-    }
-
-    #[tokio::test]
-    async fn it_returns_destination_if_binary_already_exists() {
-        use std::fs;
-
-        let binary_name = "wasm-pack";
-        let binaries = vec![binary_name];
-
-        let dir = tempfile::TempDir::new().unwrap();
-        let cache = Cache::at(dir.path());
-        let url = &format!("{}/{}.tar.gz", "http://localhost:7878", binary_name);
-
-        let dirname = hashed_dirname(&url, &binary_name);
-        let full_path = dir.path().join(dirname);
-
-        // Create temporary directory and binary to simulate that
-        // a cached binary already exists.
-        fs::create_dir_all(full_path).unwrap();
-
-        let dl = cache.download(true, binary_name, &binaries, url).await;
-
-        assert!(dl.is_ok());
-        assert!(dl.unwrap().is_some())
     }
 }

@@ -4,4 +4,5 @@ extern crate tar;
 
 mod cache;
 mod download;
+mod tokio_spawner;
 mod utils;

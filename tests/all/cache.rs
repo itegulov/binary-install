@@ -1,9 +1,11 @@
+use crate::tokio_spawner::TokioSpawner;
 use crate::utils;
 use binary_install_async::Cache;
 use std::path::Path;
 
 #[tokio::test]
 async fn it_returns_none_if_install_is_not_permitted() {
+    let spawner = TokioSpawner::current();
     let binary_name = "wasm-pack";
     let binaries = vec![binary_name];
 
@@ -16,6 +18,7 @@ async fn it_returns_none_if_install_is_not_permitted() {
             binary_name,
             &binaries,
             &format!("{}/{}.tar.gz", "", binary_name),
+            &spawner,
         )
         .await;
 
@@ -25,6 +28,7 @@ async fn it_returns_none_if_install_is_not_permitted() {
 
 #[tokio::test]
 async fn it_downloads_tarball() {
+    let spawner = TokioSpawner::current();
     let binary_name = "wasm-pack";
     let binaries = vec![binary_name];
 
@@ -45,6 +49,7 @@ async fn it_downloads_tarball() {
             binary_name,
             &binaries,
             &format!("{}/{}.tar.gz", &url, binary_name),
+            &spawner,
         )
         .await;
 
@@ -54,6 +59,7 @@ async fn it_downloads_tarball() {
 
 #[tokio::test]
 async fn it_returns_error_when_it_failed_to_download() {
+    let spawner = TokioSpawner::current();
     let server_port = 7881;
     let url = format!("http://{}:{}", utils::TEST_SERVER_HOST, server_port);
     let binary_name = "wasm-pack";
@@ -63,7 +69,9 @@ async fn it_returns_error_when_it_failed_to_download() {
     let cache = Cache::at(dir.path());
     let full_url = &format!("{}/{}.tar.gz", &url, binary_name);
 
-    let dl = cache.download(true, binary_name, &binaries, full_url).await;
+    let dl = cache
+        .download(true, binary_name, &binaries, full_url, &spawner)
+        .await;
 
     assert!(dl.is_err());
     assert_eq!(
@@ -74,6 +82,7 @@ async fn it_returns_error_when_it_failed_to_download() {
 
 #[tokio::test]
 async fn it_returns_error_when_it_failed_to_extract_tarball() {
+    let spawner = TokioSpawner::current();
     let binary_name = "wasm-pack";
     let binaries = vec![binary_name];
 
@@ -86,7 +95,9 @@ async fn it_returns_error_when_it_failed_to_extract_tarball() {
     let url = format!("http://{}:{}", utils::TEST_SERVER_HOST, server_port);
     let full_url = &format!("{}/{}.tar.gz", &url, binary_name);
 
-    let dl = cache.download(true, binary_name, &binaries, full_url).await;
+    let dl = cache
+        .download(true, binary_name, &binaries, full_url, &spawner)
+        .await;
 
     assert!(dl.is_err());
     assert_eq!(
@@ -98,6 +109,7 @@ async fn it_returns_error_when_it_failed_to_extract_tarball() {
 #[tokio::test]
 #[should_panic(expected = "don't know how to extract http://localhost:7884/wasm-pack.bin")]
 async fn it_panics_if_not_tarball_or_zip() {
+    let spawner = TokioSpawner::current();
     let server_port = 7884;
     let binary_name = "wasm-pack";
     let binaries = vec![binary_name];
@@ -111,7 +123,9 @@ async fn it_panics_if_not_tarball_or_zip() {
     let url = format!("http://{}:{}", utils::TEST_SERVER_HOST, server_port);
     let full_url = &format!("{}/{}.bin", &url, binary_name);
 
-    let _ = cache.download(true, binary_name, &binaries, full_url).await;
+    let _ = cache
+        .download(true, binary_name, &binaries, full_url, &spawner)
+        .await;
 }
 
 #[test]
