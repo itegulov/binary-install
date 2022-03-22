@@ -14,5 +14,5 @@ Clear steps describing how to reproduce the issue, including commands and flags 
 
 #### 🌍 Your environment
 Include the relevant details of your environment.
-binary-install version:
+binary-install-async version:
 rustc version:

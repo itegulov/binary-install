@@ -1,7 +1,5 @@
-# `binary-install`
+# `binary-install-async`
 
-Install a binary from a path to a global cache.
+> Based on [binary-install](https://github.com/rustwasm/binary-install).
 
-[![crates.io](https://meritbadge.herokuapp.com/binary-install)](https://crates.io/crates/binary-install)
-[![API Documentation on docs.rs](https://docs.rs/binary-install/badge.svg)](https://docs.rs/binary-install)
-
+Asynchronously install a binary from a path to a global cache.

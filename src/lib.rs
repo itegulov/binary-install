@@ -1,4 +1,4 @@
-//! Utilities for finding and installing binaries that we depend on.
+//! Utilities for asynchronously finding and installing binaries that we depend on.
 
 extern crate curl;
 #[macro_use]

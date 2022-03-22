@@ -1,6 +1,6 @@
 ---
 name: Feature Request 💡
-about: Suggest a new idea for binary-install
+about: Suggest a new idea for binary-install-async
 ---
 
 ## 💡 Feature description

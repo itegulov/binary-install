@@ -7,4 +7,4 @@ $ rustup component add rustfmt-preview --toolchain nightly
 - [ ] You ran `cargo fmt` on the code base before submitting
 - [ ] You reference which issue is being closed in the PR text
 
-✨✨ 😄 Thanks so much for contributing to binary-install! 😄 ✨✨
+✨✨ 😄 Thanks so much for contributing to binary-install-async! 😄 ✨✨
